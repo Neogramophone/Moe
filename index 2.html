@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Moeka">
+<title>青木萌花 AI先生</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@300;400;700&display=swap');
+:root{--pink:#f4a7b9;--pink-light:#fde8ed;--pink-deep:#e07a93;--cream:#fff9f5;--text:#3d2b35;--text-light:#8a6570;--shadow:0 8px 32px rgba(224,122,147,.15);--radius:20px}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'M PLUS Rounded 1c',sans-serif;background:var(--cream);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 20%,rgba(244,167,185,.18) 0%,transparent 60%),radial-gradient(ellipse at 80% 80%,rgba(253,232,237,.3) 0%,transparent 60%);pointer-events:none;z-index:0}
+.app{position:relative;z-index:1;max-width:600px;margin:0 auto;padding:0 0 80px;min-height:100vh}
+.header{padding:16px 16px 0;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.header-left{display:flex;flex-direction:column;gap:4px}
+.header-title{font-size:13px;color:var(--text-light);letter-spacing:.1em;font-weight:300}
+.wifi-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 10px;border-radius:50px;font-weight:700}
+.wifi-badge.online{background:#e8f5e9;color:#2e7d32}
+.wifi-badge.offline{background:#fff3e0;color:#e65100}
+.wifi-badge.qwen{background:#e8eaf6;color:#3949ab}
+.header-right{display:flex;gap:6px;align-items:center}
+.icon-btn{background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);padding:4px}
+.mode-toggle{display:flex;background:rgba(255,255,255,.8);border-radius:50px;padding:3px;gap:2px;border:1px solid rgba(244,167,185,.3)}
+.mode-btn{padding:5px 12px;border:none;border-radius:50px;font-size:12px;font-family:inherit;cursor:pointer;transition:all .25s;background:transparent;color:var(--text-light)}
+.mode-btn.active{background:var(--pink);color:#fff;font-weight:700}
+
+/* キャラ */
+.character-area{display:flex;flex-direction:column;align-items:center;padding:16px 16px 8px;gap:10px}
+.avatar-wrap{position:relative;width:110px;height:110px}
+.avatar-ring{position:absolute;inset:-5px;border-radius:50%;border:2px solid var(--pink);animation:ring-pulse 3s ease-in-out infinite;opacity:.5}
+@keyframes ring-pulse{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:.9;transform:scale(1.03)}}
+.avatar{width:110px;height:110px;border-radius:50%;background:linear-gradient(135deg,#fde8ed,#f4a7b9);display:flex;align-items:center;justify-content:center;font-size:48px;user-select:none;transition:all .3s;box-shadow:0 4px 20px rgba(244,167,185,.4);position:relative;overflow:hidden}
+.avatar::after{content:'';position:absolute;top:8px;left:18px;width:18px;height:8px;background:rgba(255,255,255,.35);border-radius:50%;transform:rotate(-30deg)}
+.avatar.sleeping{animation:sleep-bob 2s ease-in-out infinite}
+.avatar.thinking{animation:think-wobble .8s ease-in-out infinite}
+.avatar.speaking{animation:speak-bounce .4s ease-in-out infinite}
+.avatar.listening{box-shadow:0 4px 40px rgba(244,167,185,.9)}
+.avatar.error{animation:error-shake .5s ease-in-out}
+@keyframes sleep-bob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(4px) rotate(3deg)}}
+@keyframes think-wobble{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
+@keyframes speak-bounce{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+@keyframes error-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.status-badge{background:#fff;border:1.5px solid rgba(244,167,185,.35);border-radius:50px;padding:5px 16px;font-size:13px;color:var(--text-light);display:flex;align-items:center;gap:7px;box-shadow:0 2px 12px rgba(244,167,185,.1);min-height:32px;transition:all .3s}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--pink);animation:dot-pulse 2s ease-in-out infinite;flex-shrink:0}
+@keyframes dot-pulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.3)}}
+.status-dot.thinking{background:#f4d03f}
+.status-dot.sleeping{background:#a8d8ea}
+.status-dot.error{background:#e74c3c;animation:none}
+
+/* チャット */
+.chat-area{padding:0 14px;display:flex;flex-direction:column;gap:10px;max-height:360px;overflow-y:auto;scroll-behavior:smooth}
+.chat-area::-webkit-scrollbar{width:3px}
+.chat-area::-webkit-scrollbar-thumb{background:var(--pink);border-radius:10px}
+.bubble{max-width:82%;padding:10px 15px;border-radius:18px;font-size:14.5px;line-height:1.65;animation:bubble-in .25s cubic-bezier(.34,1.56,.64,1)}
+@keyframes bubble-in{from{opacity:0;transform:scale(.85) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.bubble.moeka{background:#fff;border:1.5px solid rgba(244,167,185,.25);border-bottom-left-radius:4px;align-self:flex-start;box-shadow:0 2px 12px rgba(244,167,185,.1)}
+.bubble.user{background:linear-gradient(135deg,var(--pink),var(--pink-deep));color:#fff;border-bottom-right-radius:4px;align-self:flex-end;box-shadow:0 2px 12px rgba(224,122,147,.3)}
+.bubble-meta{font-size:10px;opacity:.5;margin-top:3px;display:flex;gap:6px;align-items:center}
+.typing-indicator{display:none;gap:5px;padding:11px 15px;background:#fff;border-radius:18px;border-bottom-left-radius:4px;align-self:flex-start;border:1.5px solid rgba(244,167,185,.2)}
+.typing-indicator.show{display:flex}
+.typing-dot{width:7px;height:7px;border-radius:50%;background:var(--pink);animation:typing-bounce 1.2s ease-in-out infinite}
+.typing-dot:nth-child(2){animation-delay:.2s}
+.typing-dot:nth-child(3){animation-delay:.4s}
+@keyframes typing-bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+
+/* 暗記カード */
+.section-title{font-size:12px;color:var(--text-light);font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:10px 18px 5px}
+.subject-tabs{display:flex;gap:6px;overflow-x:auto;padding:0 14px 8px;scrollbar-width:none}
+.subject-tabs::-webkit-scrollbar{display:none}
+.subject-tab{flex-shrink:0;padding:6px 14px;border:1.5px solid rgba(244,167,185,.35);border-radius:50px;font-size:12px;background:#fff;color:var(--text-light);cursor:pointer;transition:all .2s;font-family:inherit}
+.subject-tab.active{background:var(--pink);border-color:var(--pink);color:#fff;font-weight:700}
+.flashcard{background:#fff;border-radius:var(--radius);padding:22px;box-shadow:var(--shadow);border:1.5px solid rgba(244,167,185,.2);min-height:190px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;transition:transform .15s;user-select:none;position:relative;overflow:hidden;margin:0 14px}
+.flashcard:active{transform:scale(.98)}
+.flashcard::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--pink),var(--pink-deep))}
+.card-category{font-size:11px;color:var(--pink-deep);font-weight:700;letter-spacing:.08em;margin-bottom:10px}
+.card-question{font-size:17px;font-weight:500;line-height:1.6;color:var(--text);flex:1}
+.card-answer{background:var(--pink-light);border-radius:12px;padding:13px;font-size:15px;color:var(--text);line-height:1.6;margin-top:14px;display:none;animation:answer-reveal .3s ease}
+@keyframes answer-reveal{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.card-hint{font-size:11px;color:var(--text-light);margin-top:10px;text-align:center}
+.card-nav{display:flex;gap:8px;margin:10px 14px 0}
+.card-nav-btn{flex:1;padding:11px;border:1.5px solid rgba(244,167,185,.35);border-radius:12px;font-size:13px;font-family:inherit;cursor:pointer;background:#fff;color:var(--text);transition:all .2s;font-weight:500}
+.card-nav-btn:active{transform:scale(.97)}
+.card-nav-btn.primary{background:var(--pink);border-color:var(--pink);color:#fff}
+.card-progress{text-align:center;font-size:12px;color:var(--text-light);margin-top:6px}
+
+/* 音声モード */
+.voice-area{display:flex;flex-direction:column;align-items:center;padding:16px;gap:18px}
+.voice-wave{display:flex;gap:5px;align-items:center;height:46px}
+.wave-bar{width:4px;background:var(--pink);border-radius:4px;animation:wave-anim 1.2s ease-in-out infinite}
+.wave-bar:nth-child(1){height:14px;animation-delay:0s}
+.wave-bar:nth-child(2){height:28px;animation-delay:.1s}
+.wave-bar:nth-child(3){height:42px;animation-delay:.2s}
+.wave-bar:nth-child(4){height:24px;animation-delay:.3s}
+.wave-bar:nth-child(5){height:38px;animation-delay:.4s}
+.wave-bar:nth-child(6){height:18px;animation-delay:.5s}
+.wave-bar:nth-child(7){height:32px;animation-delay:.6s}
+@keyframes wave-anim{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1)}}
+.voice-display{background:#fff;border-radius:var(--radius);padding:18px;font-size:15px;line-height:1.7;color:var(--text);width:100%;min-height:80px;border:1.5px solid rgba(244,167,185,.2);box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;text-align:center}
+.big-mic{width:76px;height:76px;border-radius:50%;border:none;background:linear-gradient(135deg,var(--pink),var(--pink-deep));color:#fff;font-size:26px;cursor:pointer;box-shadow:0 8px 30px rgba(224,122,147,.5);transition:all .2s;display:flex;align-items:center;justify-content:center}
+.big-mic:active{transform:scale(.93)}
+.big-mic.recording{animation:big-pulse .8s ease-in-out infinite;background:linear-gradient(135deg,var(--pink-deep),#c0392b)}
+@keyframes big-pulse{0%,100%{box-shadow:0 8px 30px rgba(224,122,147,.5)}50%{box-shadow:0 8px 50px rgba(224,122,147,.9),0 0 0 20px rgba(224,122,147,.1)}}
+
+/* 設定パネル */
+.settings-panel{display:none;flex-direction:column;gap:10px;padding:14px;background:#fff;border-radius:var(--radius);border:1.5px solid rgba(244,167,185,.2);margin:8px 14px}
+.settings-panel.show{display:flex}
+.settings-title{font-size:12px;font-weight:700;color:var(--text-light);letter-spacing:.05em}
+.settings-label{font-size:12px;color:var(--text-light);margin-bottom:2px}
+.api-input{padding:9px 13px;border:1.5px solid rgba(244,167,185,.3);border-radius:10px;font-size:13px;font-family:inherit;color:var(--text);outline:none;background:var(--cream);width:100%}
+.api-input:focus{border-color:var(--pink)}
+.save-btn{padding:10px;background:var(--pink);color:#fff;border:none;border-radius:10px;font-size:13px;font-family:inherit;font-weight:700;cursor:pointer}
+.save-btn:active{transform:scale(.97)}
+.dl-btn{padding:10px;background:linear-gradient(135deg,#3949ab,#5c6bc0);color:#fff;border:none;border-radius:10px;font-size:13px;font-family:inherit;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.dl-btn:active{transform:scale(.97)}
+.dl-btn:disabled{opacity:.6;cursor:not-allowed}
+.progress-bar{height:6px;background:rgba(244,167,185,.2);border-radius:10px;overflow:hidden;display:none}
+.progress-bar.show{display:block}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--pink),var(--pink-deep));border-radius:10px;width:0%;transition:width .3s}
+.progress-text{font-size:11px;color:var(--text-light);text-align:center}
+.ai-status-row{display:flex;gap:6px;flex-wrap:wrap}
+.ai-badge{font-size:11px;padding:3px 9px;border-radius:50px;font-weight:700;border:1.5px solid}
+.ai-badge.active{background:#e8f5e9;color:#2e7d32;border-color:#a5d6a7}
+.ai-badge.inactive{background:#f5f5f5;color:#9e9e9e;border-color:#e0e0e0}
+
+/* 入力 */
+.input-area{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;padding:8px 14px 18px;background:linear-gradient(to top,var(--cream) 80%,transparent);z-index:100}
+.input-row{display:flex;gap:7px;align-items:flex-end;background:#fff;border-radius:50px;padding:5px 5px 5px 14px;border:1.5px solid rgba(244,167,185,.3);box-shadow:0 4px 20px rgba(244,167,185,.15)}
+.text-input{flex:1;border:none;outline:none;font-size:15px;font-family:inherit;background:transparent;color:var(--text);resize:none;max-height:100px;min-height:30px;line-height:1.5;padding:4px 0}
+.text-input::placeholder{color:#c9a8b2}
+.send-btn,.mic-btn{width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .2s;flex-shrink:0}
+.send-btn{background:linear-gradient(135deg,var(--pink),var(--pink-deep));color:#fff;box-shadow:0 2px 10px rgba(224,122,147,.4)}
+.send-btn:active{transform:scale(.92)}
+.mic-btn{background:var(--pink-light);color:var(--pink-deep)}
+.mic-btn.recording{background:var(--pink-deep);color:#fff;animation:mic-pulse .8s ease-in-out infinite}
+@keyframes mic-pulse{0%,100%{box-shadow:0 0 0 0 rgba(224,122,147,.4)}50%{box-shadow:0 0 0 10px rgba(224,122,147,0)}}
+
+/* ナビ */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;display:flex;background:rgba(255,255,255,.92);backdrop-filter:blur(10px);border-top:1px solid rgba(244,167,185,.2);z-index:200}
+.nav-item{flex:1;padding:9px 4px 13px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;border:none;background:transparent;font-family:inherit;transition:all .2s}
+.nav-icon{font-size:19px}
+.nav-label{font-size:10px;color:var(--text-light);font-weight:500}
+.nav-item.active .nav-label{color:var(--pink-deep);font-weight:700}
+.nav-item.active .nav-icon{transform:scale(1.15)}
+
+/* トースト */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-60px);background:var(--text);color:#fff;padding:9px 18px;border-radius:50px;font-size:13px;z-index:999;transition:transform .3s cubic-bezier(.34,1.56,.64,1);white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<div class="app">
+
+  <div class="header">
+    <div class="header-left">
+      <div class="header-title">青木萌花 AI先生</div>
+      <span class="wifi-badge offline" id="wifiBadge">● オフライン</span>
+    </div>
+    <div class="header-right">
+      <button class="icon-btn" onclick="toggleSettings()">⚙️</button>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="chatModeBtn" onclick="switchMode('chat')">💬</button>
+        <button class="mode-btn" id="voiceModeBtn" onclick="switchMode('voice')">📞</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 設定パネル -->
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-title">⚙️ AI設定</div>
+
+    <div>
+      <div class="settings-label">現在のAI状態</div>
+      <div class="ai-status-row" id="aiStatusRow">
+        <span class="ai-badge inactive" id="badgeQwen">🤖 Qwen オフライン</span>
+        <span class="ai-badge inactive" id="badgeHF">🌐 HF API</span>
+        <span class="ai-badge inactive" id="badgeCloud">☁️ Claude/OpenAI</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="settings-label">HuggingFace トークン（無料・AI会話に使用）</div>
+      <input type="password" class="api-input" id="hfToken" placeholder="hf_xxxxxxxxxxxx">
+    </div>
+
+    <div>
+      <div class="settings-label">Claude または OpenAI APIキー（オプション）</div>
+      <select class="api-input" id="cloudProvider" style="margin-bottom:6px">
+        <option value="none">使わない</option>
+        <option value="anthropic">Claude (Anthropic)</option>
+        <option value="openai">OpenAI</option>
+      </select>
+      <input type="password" class="api-input" id="cloudApiKey" placeholder="APIキー（省略可）">
+    </div>
+
+    <button class="save-btn" onclick="saveSettings()">💾 保存</button>
+
+    <div style="border-top:1px solid rgba(244,167,185,.2);padding-top:10px">
+      <div class="settings-label">🤖 Qwenをブラウザに読み込む（オフラインAI）</div>
+      <div style="font-size:11px;color:var(--text-light);margin-bottom:8px">初回のみ約400MB。Wi-Fiがあるときにダウンロード→次からオフラインで動く</div>
+      <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-text" id="progressText"></div>
+      <button class="dl-btn" id="dlBtn" onclick="loadQwenModel()">📥 Qwenをダウンロード・起動</button>
+    </div>
+
+    <div style="font-size:11px;color:var(--text-light)">※ APIキーなしでも暗記カードは完全動作</div>
+  </div>
+
+  <!-- キャラクター -->
+  <div class="character-area">
+    <div class="avatar-wrap">
+      <div class="avatar-ring"></div>
+      <div class="avatar" id="avatar">🌸</div>
+    </div>
+    <div class="status-badge">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">なんでも聞いてね</span>
+    </div>
+  </div>
+
+  <!-- チャットページ -->
+  <div id="chatPage">
+    <div class="section-title">会話</div>
+    <div class="chat-area" id="chatArea">
+      <div class="bubble moeka">
+        おはよ〜！今日も頑張ろっか😊<br>
+        <span style="font-size:13px;color:var(--text-light)">化学・数学・英語なんでも聞いて！<br>下の📚ボタンで暗記練習もできるよ</span>
+        <div class="bubble-meta"><span>起動時</span></div>
+      </div>
+    </div>
+    <div class="typing-indicator" id="typingIndicator">
+      <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
+    </div>
+  </div>
+
+  <!-- カードページ -->
+  <div id="cardPage" style="display:none">
+    <div class="section-title">暗記カード（255問）</div>
+    <div class="subject-tabs" id="subjectTabs"></div>
+    <div class="flashcard" id="flashcard" onclick="toggleAnswer()">
+      <div>
+        <div class="card-category" id="cardCategory"></div>
+        <div class="card-question" id="cardQuestion">読み込み中...</div>
+      </div>
+      <div class="card-answer" id="cardAnswer"></div>
+      <div class="card-hint">タップして答えを見る 🌸</div>
+    </div>
+    <div class="card-progress" id="cardProgress"></div>
+    <div class="card-nav">
+      <button class="card-nav-btn" onclick="prevCard()">← 前へ</button>
+      <button class="card-nav-btn primary" onclick="nextCard()">次へ →</button>
+    </div>
+  </div>
+
+  <!-- 音声ページ -->
+  <div id="voicePage" style="display:none">
+    <div class="voice-area">
+      <div class="voice-wave" id="voiceWave" style="opacity:.2">
+        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+      </div>
+      <div class="voice-display" id="voiceDisplay">決定ボタンを押して話しかけてね</div>
+      <button class="big-mic" id="bigMic" onclick="toggleVoice()">🎤</button>
+      <div style="font-size:12px;color:var(--text-light);text-align:center">ボタンを押して話す → もう一度で送信</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 入力エリア -->
+<div class="input-area" id="inputArea">
+  <div class="input-row">
+    <button class="mic-btn" id="micBtn" onclick="toggleMicInput()">🎤</button>
+    <textarea class="text-input" id="textInput" placeholder="萌花に聞いてみよう…" rows="1"
+      onkeydown="handleKeydown(event)" oninput="autoResize(this)"></textarea>
+    <button class="send-btn" onclick="sendMessage()">↑</button>
+  </div>
+</div>
+
+<!-- ボトムナビ -->
+<div class="bottom-nav">
+  <button class="nav-item active" id="navChat" onclick="showPage('chat')">
+    <span class="nav-icon">💬</span><span class="nav-label">チャット</span>
+  </button>
+  <button class="nav-item" id="navCard" onclick="showPage('card')">
+    <span class="nav-icon">📚</span><span class="nav-label">暗記カード</span>
+  </button>
+  <button class="nav-item" id="navVoice" onclick="showPage('voice')">
+    <span class="nav-icon">📞</span><span class="nav-label">音声</span>
+  </button>
+</div>
+
+<script type="module">
+// ─── Transformers.js（動的インポート）───
+let qwenPipeline = null;
+let qwenLoading = false;
+
+window.loadQwenModel = async function() {
+  if (qwenLoading || qwenPipeline) return;
+  qwenLoading = true;
+  const btn = document.getElementById('dlBtn');
+  const bar = document.getElementById('progressBar');
+  const fill = document.getElementById('progressFill');
+  const txt = document.getElementById('progressText');
+  btn.disabled = true;
+  btn.textContent = '⌛ 読み込み中...';
+  bar.classList.add('show');
+  txt.textContent = 'ライブラリを読み込んでいます...';
+  setStatus('loading');
+
+  try {
+    const { pipeline, env } = await import(
+      'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.2/dist/transformers.min.js'
+    );
+    env.allowLocalModels = false;
+    env.useBrowserCache = true;
+
+    txt.textContent = 'Qwenモデルをダウンロード中... (約400MB・初回のみ)';
+    fill.style.width = '10%';
+
+    qwenPipeline = await pipeline(
+      'text-generation',
+      'onnx-community/Qwen2-0.5B-Instruct',
+      {
+        dtype: 'q4',
+        device: 'webgpu',
+        progress_callback: (p) => {
+          if (p.progress) {
+            const pct = Math.round(p.progress);
+            fill.style.width = pct + '%';
+            txt.textContent = `ダウンロード中... ${pct}% (${p.file || ''})`;
+          }
+        }
+      }
+    );
+
+    fill.style.width = '100%';
+    txt.textContent = '✅ Qwen準備完了！オフラインで動くよ';
+    btn.textContent = '✅ Qwen起動済み';
+    updateAIBadges();
+    setStatus('idle');
+    showToast('Moekaが賢くなったよ！');
+  } catch(e) {
+    console.error(e);
+    // WebGPU失敗 → WASMで再試行
+    try {
+      txt.textContent = 'WebGPU不可。WASMで再試行中...';
+      const { pipeline, env } = await import(
+        'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.2/dist/transformers.min.js'
+      );
+      env.allowLocalModels = false;
+      env.useBrowserCache = true;
+      qwenPipeline = await pipeline(
+        'text-generation',
+        'onnx-community/Qwen2-0.5B-Instruct',
+        { dtype: 'q4', device: 'wasm' }
+      );
+      fill.style.width = '100%';
+      txt.textContent = '✅ Qwen(WASM)準備完了！';
+      btn.textContent = '✅ Qwen起動済み(WASM)';
+      updateAIBadges();
+      setStatus('idle');
+      showToast('Qwen(低速モード)で起動したよ');
+    } catch(e2) {
+      txt.textContent = '❌ 読み込み失敗。ごめん...';
+      btn.textContent = '🔄 再試行';
+      btn.disabled = false;
+      qwenLoading = false;
+      setStatus('error');
+      setTimeout(()=>setStatus('idle'),2000);
+    }
+  }
+};
+
+// ─── フラッシュカードデータ ───
+const FLASHCARD_DATA = {
+  "化学基礎":{
+    "物質の分類":[
+      {q:"純物質とは？",a:"1種類の物質だけからなるもの。例：水、鉄、酸素"},
+      {q:"混合物とは？",a:"2種類以上の物質が混ざったもの。例：空気、海水、石油"},
+      {q:"単体とは？",a:"1種類の元素だけからなる純物質。例：O₂、Fe、Cu"},
+      {q:"化合物とは？",a:"2種類以上の元素からなる純物質。例：H₂O、NaCl、CO₂"},
+      {q:"同素体とは？",a:"同じ元素からなる単体で、性質が異なるもの"},
+      {q:"炭素の同素体を3つ言え",a:"ダイヤモンド・黒鉛（グラファイト）・フラーレン"},
+      {q:"酸素の同素体を2つ言え",a:"酸素O₂・オゾンO₃"},
+      {q:"硫黄の同素体を3つ言え",a:"斜方硫黄・単斜硫黄・ゴム状硫黄"},
+      {q:"リンの同素体を2つ言え",a:"黄リン・赤リン"},
+      {q:"ろ過で分離できる混合物の例は？",a:"砂と水の混合物"},
+      {q:"蒸留で分離できる混合物の例は？",a:"水とエタノールの混合物（沸点の差を利用）"},
+      {q:"再結晶で分離できる混合物の例は？",a:"食塩と硝酸カリウムの混合物（溶解度の差を利用）"},
+      {q:"昇華で分離できる物質の例は？",a:"ヨウ素・ナフタレン・ドライアイス"},
+    ],
+    "原子の構造":[
+      {q:"原子の構造3つは？",a:"陽子・中性子・電子"},
+      {q:"原子番号の定義は？",a:"原子核中の陽子の数"},
+      {q:"質量数の定義は？",a:"陽子の数＋中性子の数"},
+      {q:"中性子の数の求め方は？",a:"質量数－原子番号"},
+      {q:"同位体とは？",a:"原子番号が同じで質量数が異なる原子"},
+      {q:"電子殻の名称（内側から）は？",a:"K殻・L殻・M殻・N殻…"},
+      {q:"各電子殻の最大電子数の公式は？",a:"2n²個（K:2, L:8, M:18）"},
+      {q:"価電子とは？",a:"最も外側の電子殻にある電子。化学結合に関与する"},
+      {q:"貴ガスの価電子数は？",a:"0（最外殻が満たされているため）"},
+      {q:"Na（原子番号11）の電子配置は？",a:"K:2 L:8 M:1"},
+      {q:"Cl（原子番号17）の電子配置は？",a:"K:2 L:8 M:7"},
+      {q:"Ca（原子番号20）の電子配置は？",a:"K:2 L:8 M:8 N:2"},
+    ],
+    "周期表":[
+      {q:"周期表の横の並びを何という？",a:"周期（1〜7周期）"},
+      {q:"周期表の縦の並びを何という？",a:"族（1〜18族）"},
+      {q:"典型元素とは？",a:"1,2族と12〜18族の元素"},
+      {q:"遷移元素とは？",a:"3〜11族の元素。すべて金属元素"},
+      {q:"貴ガスの族番号は？",a:"18族。He,Ne,Ar,Kr,Xe,Rn"},
+      {q:"アルカリ金属の族番号は？",a:"1族（Hを除く）。Li,Na,K,Rb,Cs,Fr"},
+      {q:"ハロゲンの族番号は？",a:"17族。F,Cl,Br,I,At"},
+      {q:"1〜20番の元素記号は？",a:"H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca"},
+    ],
+    "イオン":[
+      {q:"Na⁺のイオン名は？",a:"ナトリウムイオン"},
+      {q:"Ca²⁺のイオン名は？",a:"カルシウムイオン"},
+      {q:"Al³⁺のイオン名は？",a:"アルミニウムイオン"},
+      {q:"Cl⁻のイオン名は？",a:"塩化物イオン"},
+      {q:"O²⁻のイオン名は？",a:"酸化物イオン"},
+      {q:"OH⁻のイオン名は？",a:"水酸化物イオン"},
+      {q:"SO₄²⁻のイオン名は？",a:"硫酸イオン"},
+      {q:"NO₃⁻のイオン名は？",a:"硝酸イオン"},
+      {q:"NH₄⁺のイオン名は？",a:"アンモニウムイオン"},
+      {q:"CO₃²⁻のイオン名は？",a:"炭酸イオン"},
+    ],
+    "化学結合":[
+      {q:"イオン結合とは？",a:"陽イオンと陰イオンが静電気力で結びつく結合"},
+      {q:"共有結合とは？",a:"原子どうしが電子対を共有して結びつく結合"},
+      {q:"金属結合とは？",a:"金属原子が自由電子を共有して結びつく結合"},
+      {q:"水素結合とは？",a:"F・O・Nに結合したHが他のF・O・Nと形成する分子間力"},
+      {q:"水素結合する分子の例は？",a:"H₂O・HF・NH₃"},
+      {q:"イオン結晶の例は？",a:"NaCl、KCl（融点高い）"},
+      {q:"共有結合の結晶の例は？",a:"ダイヤモンド・黒鉛・SiO₂"},
+      {q:"分子結晶の例は？",a:"ドライアイス・ナフタレン・氷（融点低い）"},
+    ],
+    "化学式":[
+      {q:"塩化ナトリウムの化学式は？",a:"NaCl"},
+      {q:"水酸化ナトリウムの化学式は？",a:"NaOH"},
+      {q:"硫酸の化学式は？",a:"H₂SO₄"},
+      {q:"塩酸の化学式は？",a:"HCl"},
+      {q:"硝酸の化学式は？",a:"HNO₃"},
+      {q:"炭酸カルシウムの化学式は？",a:"CaCO₃"},
+      {q:"水酸化カルシウムの化学式は？",a:"Ca(OH)₂"},
+      {q:"アンモニアの化学式は？",a:"NH₃"},
+    ]
+  },
+  "数学Ⅱ":{
+    "整式・恒等式":[
+      {q:"整式A÷BでA=BQ+Rのとき、Q・Rの名称は？",a:"Q：商、R：余り"},
+      {q:"余りRの次数の条件は？",a:"割る式Bの次数より小さい（または0）"},
+      {q:"恒等式とは？",a:"どんな値を代入しても成り立つ等式"},
+      {q:"ax²+bx+c=0が恒等式のとき？",a:"a=0, b=0, c=0"},
+    ],
+    "等式・不等式の証明":[
+      {q:"等式A=Bを証明する基本方針は？",a:"①A-B=0を示す ②片方を変形して他方にする"},
+      {q:"不等式A≥Bを証明する基本方針は？",a:"A-B≥0を示す"},
+      {q:"相加平均・相乗平均の関係式は？",a:"a>0,b>0のとき (a+b)/2 ≥ √(ab)　等号はa=b"},
+      {q:"a²≥0はいつ成立？",a:"すべての実数a。等号はa=0"},
+      {q:"(a-b)²≥0を展開すると？",a:"a²-2ab+b²≥0 → a²+b²≥2ab"},
+    ],
+    "二項定理":[
+      {q:"二項定理の公式は？",a:"(a+b)ⁿ = Σ nCk・aⁿ⁻ᵏ・bᵏ"},
+      {q:"nCkの公式は？",a:"n! / (k!(n-k)!)"},
+      {q:"nC0=？ nCn=？",a:"両方とも1"},
+      {q:"(a+b)³を展開すると？",a:"a³+3a²b+3ab²+b³"},
+    ],
+  },
+  "数学B":{
+    "指数関数":[
+      {q:"aᵐ×aⁿ=？",a:"aᵐ⁺ⁿ"},
+      {q:"aᵐ÷aⁿ=？",a:"aᵐ⁻ⁿ"},
+      {q:"(aᵐ)ⁿ=？",a:"aᵐⁿ"},
+      {q:"a⁰=？（a≠0）",a:"1"},
+      {q:"a⁻ⁿ=？",a:"1/aⁿ"},
+      {q:"a^(1/n)=？",a:"ⁿ√a"},
+      {q:"y=aˣ（a>1）のグラフの特徴は？",a:"右上がり。x軸が漸近線。(0,1)を通る"},
+      {q:"y=aˣ（0<a<1）のグラフの特徴は？",a:"右下がり。x軸が漸近線。(0,1)を通る"},
+      {q:"指数関数の底の条件は？",a:"a>0かつa≠1"},
+    ],
+    "対数関数":[
+      {q:"logₐM=pの意味は？",a:"aᵖ=M"},
+      {q:"logₐ1=？",a:"0"},
+      {q:"logₐa=？",a:"1"},
+      {q:"logₐ(MN)=？",a:"logₐM＋logₐN"},
+      {q:"logₐ(M/N)=？",a:"logₐM－logₐN"},
+      {q:"logₐMᵏ=？",a:"k·logₐM"},
+      {q:"底の変換公式は？",a:"logₐb = logcb / logca"},
+      {q:"log₁₀2≈？",a:"0.3010"},
+      {q:"log₁₀3≈？",a:"0.4771"},
+      {q:"常用対数とは？",a:"底が10の対数。桁数を求めるのに使う"},
+    ],
+    "等差数列":[
+      {q:"等差数列の一般項は？",a:"aₙ = a₁ + (n-1)d"},
+      {q:"等差数列の和（初項・末項型）は？",a:"Sₙ = n(a₁+aₙ)/2"},
+      {q:"等差数列の和（初項・公差型）は？",a:"Sₙ = n{2a₁+(n-1)d}/2"},
+      {q:"等差中項の定義は？",a:"b=(a+c)/2"},
+    ],
+    "等比数列":[
+      {q:"等比数列の一般項は？",a:"aₙ = a₁·rⁿ⁻¹"},
+      {q:"等比数列の和（r≠1）は？",a:"Sₙ = a₁(1-rⁿ)/(1-r)"},
+      {q:"等比数列の和（r=1）は？",a:"Sₙ = na₁"},
+      {q:"等比中項の定義は？",a:"b²=ac"},
+    ],
+    "シグマ・帰納法":[
+      {q:"Σk（k=1〜n）=？",a:"n(n+1)/2"},
+      {q:"Σk²（k=1〜n）=？",a:"n(n+1)(2n+1)/6"},
+      {q:"Σk³（k=1〜n）=？",a:"{n(n+1)/2}²"},
+      {q:"Σc（定数）=？",a:"cn"},
+      {q:"数学的帰納法の手順は？",a:"①n=1で確認 ②n=kで仮定→n=k+1でも示す ③全nで成立"},
+    ],
+  },
+  "英語コミュⅡ":{
+    "システム英単語701-900":[
+      {q:"abandon",a:"〜を捨てる、放棄する"},
+      {q:"abstract",a:"抽象的な；抽象"},
+      {q:"adequate",a:"十分な、適切な"},
+      {q:"affect",a:"〜に影響を与える"},
+      {q:"alter",a:"〜を変える、変わる"},
+      {q:"analyze",a:"〜を分析する"},
+      {q:"anticipate",a:"〜を予期する"},
+      {q:"apparent",a:"明らかな、見かけ上の"},
+      {q:"approximately",a:"おおよそ、約"},
+      {q:"assume",a:"〜と仮定する"},
+      {q:"attempt",a:"〜を試みる；試み"},
+      {q:"attitude",a:"態度、姿勢"},
+      {q:"authority",a:"権威、当局"},
+      {q:"benefit",a:"利益、恩恵"},
+      {q:"capable",a:"能力がある（be capable of）"},
+      {q:"claim",a:"〜と主張する；主張"},
+      {q:"commit",a:"〜を犯す；専念する"},
+      {q:"concern",a:"懸念；〜に関係する"},
+      {q:"conclude",a:"〜と結論づける"},
+      {q:"conflict",a:"対立、衝突"},
+      {q:"consequence",a:"結果、影響"},
+      {q:"consider",a:"〜をよく考える"},
+      {q:"contribute",a:"貢献する（contribute to）"},
+      {q:"convince",a:"〜を納得させる"},
+      {q:"declare",a:"〜を宣言する"},
+      {q:"define",a:"〜を定義する"},
+      {q:"deny",a:"〜を否定する"},
+      {q:"despite",a:"〜にもかかわらず"},
+      {q:"determine",a:"〜を決定する、決心する"},
+      {q:"develop",a:"〜を発展させる"},
+    ],
+  },
+  "論理英語Ⅱ":{
+    "分詞":[
+      {q:"現在分詞の形と意味は？",a:"動詞ing形。「〜している」（能動）"},
+      {q:"過去分詞の形と意味は？",a:"動詞の過去分詞形。「〜された」（受動）"},
+      {q:"分詞の前置修飾の例は？",a:"a sleeping cat / a broken window"},
+      {q:"分詞の後置修飾の例は？",a:"the boy playing soccer"},
+      {q:"分詞構文とは？",a:"分詞で副詞節を表す。主文と主語が同じとき"},
+      {q:"分詞構文の作り方は？",a:"①接続詞省く②同じ主語省く③動詞をing形に"},
+      {q:"Having+過去分詞の意味は？",a:"主節より前の動作（〜していたので）"},
+    ],
+    "関係詞":[
+      {q:"関係代名詞whoの用法は？",a:"先行詞が人。主格"},
+      {q:"関係代名詞whomの用法は？",a:"先行詞が人。目的格"},
+      {q:"関係代名詞whichの用法は？",a:"先行詞が物・事。主格・目的格"},
+      {q:"関係代名詞thatの特徴は？",a:"人・物両方。非制限用法では使えない"},
+      {q:"関係代名詞whatの意味は？",a:"「〜すること/もの」= the thing which"},
+      {q:"関係副詞whereの用法は？",a:"先行詞が場所。in whichと書き換え可"},
+      {q:"関係副詞whenの用法は？",a:"先行詞が時。at/in/on whichと書き換え可"},
+      {q:"非制限用法とは？",a:"カンマ+which/whoで補足説明。thatは使えない"},
+    ],
+    "英熟語Target1000":[
+      {q:"agree with",a:"〜に同意する"},
+      {q:"apply for",a:"〜に申し込む"},
+      {q:"be based on",a:"〜に基づいている"},
+      {q:"be made of/from",a:"〜から作られている"},
+      {q:"break down",a:"故障する、分解する"},
+      {q:"bring about",a:"〜をもたらす"},
+      {q:"call off",a:"〜を中止する"},
+      {q:"carry out",a:"〜を実行する"},
+      {q:"come up with",a:"〜を思いつく"},
+      {q:"deal with",a:"〜に対処する"},
+      {q:"end up",a:"最終的に〜になる"},
+      {q:"figure out",a:"〜を理解する、解決する"},
+      {q:"get rid of",a:"〜を取り除く"},
+      {q:"go through",a:"〜を経験する"},
+      {q:"in addition to",a:"〜に加えて"},
+      {q:"in order to",a:"〜するために"},
+      {q:"in spite of",a:"〜にもかかわらず"},
+      {q:"lead to",a:"〜につながる"},
+      {q:"look forward to",a:"〜を楽しみにしている（toの後はing形）"},
+      {q:"on the other hand",a:"一方では"},
+      {q:"point out",a:"〜を指摘する"},
+      {q:"result in",a:"〜という結果になる"},
+      {q:"result from",a:"〜から生じる"},
+      {q:"take advantage of",a:"〜を利用する"},
+      {q:"take place",a:"起こる、行われる"},
+      {q:"tend to",a:"〜する傾向がある"},
+      {q:"turn out",a:"〜だとわかる"},
+    ],
+  }
+};
+
+const MOEKA_SYSTEM = `あなたは青木萌花（あおきもえか）です。高校の化学・物理担当の女性教師。優しくて生徒に甘い。名前を覚えるのが苦手。タメ口で短く答える。化学基礎・数学Ⅱ・数学B・英語の質問に答えてください。`;
+
+// ─── 状態 ───
+let allCards=[], filteredCards=[], currentCardIdx=0;
+let isRecording=false, recognition=null;
+let chatHistory=[], isOnline=navigator.onLine, isSpeaking=false;
+let settings={hfToken:'',cloudProvider:'none',cloudApiKey:''};
+const synth=window.speechSynthesis;
+
+// ─── 初期化 ───
+document.addEventListener('DOMContentLoaded',()=>{
+  buildCards(); buildTabs(); loadSettings(); updateOnline();
+  window.addEventListener('online',updateOnline);
+  window.addEventListener('offline',updateOnline);
+  setStatus('idle');
+});
+
+// ─── カードデータ ───
+function buildCards(){
+  allCards=[];
+  for(const s in FLASHCARD_DATA)
+    for(const c in FLASHCARD_DATA[s])
+      for(const card of FLASHCARD_DATA[s][c])
+        allCards.push({subject:s,category:c,...card});
+  filteredCards=[...allCards]; shuffle(); showCard(0);
+}
+function shuffle(){for(let i=filteredCards.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[filteredCards[i],filteredCards[j]]=[filteredCards[j],filteredCards[i]];}}
+function buildTabs(){
+  const el=document.getElementById('subjectTabs');
+  el.innerHTML='';
+  ['すべて',...Object.keys(FLASHCARD_DATA)].forEach(s=>{
+    const b=document.createElement('button');
+    b.className='subject-tab'+(s==='すべて'?' active':'');
+    b.textContent=s; b.onclick=()=>filterSubject(s,b); el.appendChild(b);
+  });
+}
+function filterSubject(s,btn){
+  document.querySelectorAll('.subject-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  filteredCards=s==='すべて'?[...allCards]:allCards.filter(c=>c.subject===s);
+  shuffle(); currentCardIdx=0; showCard(0);
+}
+function showCard(idx){
+  if(!filteredCards.length)return;
+  const c=filteredCards[idx];
+  document.getElementById('cardCategory').textContent=`${c.subject} ▸ ${c.category}`;
+  document.getElementById('cardQuestion').textContent=c.q;
+  document.getElementById('cardAnswer').textContent=c.a;
+  document.getElementById('cardAnswer').style.display='none';
+  document.getElementById('cardProgress').textContent=`${idx+1} / ${filteredCards.length}`;
+}
+window.toggleAnswer=()=>{
+  const a=document.getElementById('cardAnswer');
+  if(a.style.display==='none'){a.style.display='block';speakText(filteredCards[currentCardIdx].a);}
+  else a.style.display='none';
+};
+window.prevCard=()=>{if(currentCardIdx>0){currentCardIdx--;showCard(currentCardIdx);}};
+window.nextCard=()=>{
+  currentCardIdx=currentCardIdx<filteredCards.length-1?currentCardIdx+1:0;
+  showCard(currentCardIdx);
+  if(currentCardIdx===0)showToast('最初のカードに戻ったよ');
+};
+
+// ─── ステータス ───
+const STATUS={
+  idle:{text:'なんでも聞いてね',emoji:'🌸',cls:'',dot:''},
+  listening:{text:'聞いてる、どうぞ',emoji:'👂',cls:'listening',dot:''},
+  thinking:{text:'うーん…少し待ってね',emoji:'🤔',cls:'thinking',dot:'thinking'},
+  speaking:{text:'答えてるよ',emoji:'💬',cls:'speaking',dot:''},
+  sleeping:{text:'Moekaは寝ました…',emoji:'😴',cls:'sleeping',dot:'sleeping'},
+  error:{text:'ごめん、うまくいかなかった',emoji:'😣',cls:'error',dot:'error'},
+  loading:{text:'ちょっと待って…',emoji:'⌛',cls:'thinking',dot:'thinking'},
+};
+function setStatus(k){
+  const s=STATUS[k]||STATUS.idle;
+  document.getElementById('statusText').textContent=s.text;
+  const av=document.getElementById('avatar');
+  av.textContent=s.emoji; av.className='avatar'+(s.cls?' '+s.cls:'');
+  const dot=document.getElementById('statusDot');
+  dot.className='status-dot'+(s.dot?' '+s.dot:'');
+}
+
+// ─── チャット ───
+window.sendMessage=async(text)=>{
+  const inp=document.getElementById('textInput');
+  const msg=text||inp.value.trim(); if(!msg)return;
+  inp.value=''; inp.style.height='auto';
+  addBubble(msg,'user'); chatHistory.push({role:'user',content:msg});
+  setStatus('thinking');
+  document.getElementById('typingIndicator').classList.add('show');
+  scrollChat();
+  const res=await getMoekaResponse(msg);
+  document.getElementById('typingIndicator').classList.remove('show');
+  addBubble(res,'moeka'); chatHistory.push({role:'assistant',content:res});
+  setStatus('idle'); speakText(res); scrollChat();
+};
+function addBubble(text,who){
+  const area=document.getElementById('chatArea');
+  const d=document.createElement('div'); d.className=`bubble ${who}`;
+  const now=new Date();
+  const ai=who==='moeka'?`<span style="font-size:10px;opacity:.6">${getAILabel()}</span>`:'';
+  d.innerHTML=`${esc(text)}<div class="bubble-meta"><span>${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}</span>${ai}</div>`;
+  area.appendChild(d);
+}
+function getAILabel(){
+  if(qwenPipeline)return '🤖 Qwen';
+  if(isOnline&&settings.hfToken)return '🌐 HF API';
+  if(isOnline&&settings.cloudApiKey&&settings.cloudProvider!=='none')return '☁️ Cloud';
+  return '📚 オフライン';
+}
+function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');}
+function scrollChat(){const a=document.getElementById('chatArea');setTimeout(()=>a.scrollTop=a.scrollHeight,100);}
+
+// ─── AI応答ロジック ───
+async function getMoekaResponse(msg){
+  // 1. 暗記系→台本
+  const memorizeKW=['公式','意味','訳','とは','なに','何','読み方','イオン名','化学式','定義'];
+  if(memorizeKW.some(k=>msg.includes(k))&&msg.length<30){
+    const found=searchCards(msg);
+    if(found)return `${found.a}\n（${found.subject} ▸ ${found.category}）`;
+  }
+  // 2. Qwen（ローカル）
+  if(qwenPipeline){
+    try{return await runQwen(msg);}catch(e){console.error(e);}
+  }
+  // 3. HF Inference API
+  if(isOnline&&settings.hfToken){
+    try{return await callHFAPI(msg);}catch(e){console.error(e);}
+  }
+  // 4. Cloud API
+  if(isOnline&&settings.cloudApiKey&&settings.cloudProvider!=='none'){
+    try{return await callCloudAPI(msg);}catch(e){console.error(e);}
+  }
+  // 5. オフライン台本
+  const found=searchCards(msg);
+  if(found)return `${found.a}\n（${found.subject} ▸ ${found.category}）`;
+  return offlineReply(msg);
+}
+
+// ─── Qwen推論 ───
+async function runQwen(msg){
+  const messages=[
+    {role:'system',content:MOEKA_SYSTEM},
+    ...chatHistory.slice(-4).map(m=>({role:m.role,content:m.content})),
+    {role:'user',content:msg}
+  ];
+  const out=await qwenPipeline(messages,{max_new_tokens:200,do_sample:true,temperature:0.7});
+  const generated=out[0]?.generated_text;
+  if(Array.isArray(generated)){
+    const last=generated[generated.length-1];
+    return last?.content||'うまく答えられなかった…ごめん';
+  }
+  return generated||'うまく答えられなかった…ごめん';
+}
+
+// ─── HF Inference API ───
+async function callHFAPI(msg){
+  const messages=[
+    {role:'system',content:MOEKA_SYSTEM},
+    ...chatHistory.slice(-4),
+    {role:'user',content:msg}
+  ];
+  const res=await fetch(
+    'https://api-inference.huggingface.co/models/Qwen/Qwen2.5-0.5B-Instruct/v1/chat/completions',
+    {method:'POST',
+     headers:{'Authorization':`Bearer ${settings.hfToken}`,'Content-Type':'application/json'},
+     body:JSON.stringify({model:'Qwen/Qwen2.5-0.5B-Instruct',messages,max_tokens:300,stream:false})}
+  );
+  const data=await res.json();
+  return data.choices?.[0]?.message?.content||'うまく答えられなかった…ごめん';
+}
+
+// ─── Cloud API ───
+async function callCloudAPI(msg){
+  const messages=[...chatHistory.slice(-6),{role:'user',content:msg}];
+  if(settings.cloudProvider==='anthropic'){
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':settings.cloudApiKey,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:400,system:MOEKA_SYSTEM,messages})
+    });
+    const d=await res.json();
+    return d.content?.[0]?.text||'うまく答えられなかった…ごめん';
+  }
+  if(settings.cloudProvider==='openai'){
+    const res=await fetch('https://api.openai.com/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${settings.cloudApiKey}`},
+      body:JSON.stringify({model:'gpt-4o-mini',max_tokens:400,messages:[{role:'system',content:MOEKA_SYSTEM},...messages]})
+    });
+    const d=await res.json();
+    return d.choices?.[0]?.message?.content||'うまく答えられなかった…ごめん';
+  }
+}
+
+// ─── カード検索 ───
+function searchCards(query){
+  const q=query.replace(/[？?！!〜~は？って]/g,'').trim().toLowerCase();
+  for(const c of allCards){
+    const cq=c.q.replace(/[？?！!〜~は？って]/g,'').trim().toLowerCase();
+    if(cq===q||c.q.includes(query.slice(0,6))||query.includes(c.q.slice(0,6)))return c;
+  }
+  return null;
+}
+
+// ─── オフライン返答 ───
+function offlineReply(msg){
+  if(msg.includes('化学'))return '化学ね！何が知りたい？具体的に教えてくれると教えやすいな😊';
+  if(msg.includes('数学'))return 'どの分野？数列？対数？式と証明？聞かせて';
+  if(msg.includes('英語')||msg.includes('英単語'))return '英語ね！単語？文法？どっち？';
+  if(msg.includes('おはよ')||msg.includes('こんにちは'))return 'おはよ〜！今日も頑張ろっか';
+  if(msg.includes('ありがとう'))return 'どういたしまして！またわからないことあったらいつでも聞いてね';
+  if(msg.includes('疲れ')||msg.includes('つかれ'))return 'お疲れ様！少し休んでから続けようね';
+  if(msg.includes('試験')||msg.includes('テスト'))return 'ちゃんと準備してきたんでしょ？大丈夫だよ。自分を信じて';
+  return 'ごめん、今オフラインだから詳しく答えられない…\n📚カードページで暗記練習してみて！\nWi-Fiがあるときにメニューの⚙️からQwenを読み込むともっと賢くなるよ';
+}
+
+// ─── 音声合成 ───
+function speakText(text){
+  return new Promise(resolve=>{
+    if(!synth||!text){resolve();return;}
+    synth.cancel();
+    const u=new SpeechSynthesisUtterance(text.replace(/[（(].*?[)）]/g,'').replace(/<br>/g,'。'));
+    u.lang='ja-JP'; u.rate=1.0; u.pitch=1.1;
+    const voices=synth.getVoices();
+    const v=voices.find(v=>v.lang.includes('ja')&&(v.name.includes('Female')||v.name.includes('Kyoko')||v.name.includes('O-Ren')))||voices.find(v=>v.lang.includes('ja'));
+    if(v)u.voice=v;
+    u.onstart=()=>{isSpeaking=true;setStatus('speaking');};
+    u.onend=()=>{isSpeaking=false;setStatus('idle');resolve();};
+    u.onerror=()=>{isSpeaking=false;resolve();};
+    synth.speak(u);
+  });
+}
+
+// ─── 音声入力 ───
+window.toggleMicInput=()=>{
+  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){showToast('このブラウザは音声入力非対応みたい');return;}
+  isRecording?stopRecording():startRecording('text');
+};
+window.toggleVoice=()=>{isRecording?stopRecording():startRecording('voice');};
+function startRecording(mode){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  recognition=new SR(); recognition.lang='ja-JP'; recognition.continuous=false; recognition.interimResults=true;
+  recognition.onstart=()=>{
+    isRecording=true; setStatus('listening');
+    document.getElementById('voiceWave').style.opacity='1';
+    if(mode==='voice'){document.getElementById('bigMic').classList.add('recording');document.getElementById('voiceDisplay').textContent='聞いてるよ…';}
+    else document.getElementById('micBtn').classList.add('recording');
+  };
+  recognition.onresult=e=>{
+    const t=Array.from(e.results).map(r=>r[0].transcript).join('');
+    if(mode==='voice')document.getElementById('voiceDisplay').textContent=t;
+    else document.getElementById('textInput').value=t;
+  };
+  recognition.onend=()=>{
+    stopRecording();
+    if(mode==='voice'){
+      const t=document.getElementById('voiceDisplay').textContent;
+      if(t&&t!=='聞いてるよ…'&&t!=='決定ボタンを押して話しかけてね')processVoice(t);
+    }
+  };
+  recognition.onerror=()=>{stopRecording();setStatus('error');setTimeout(()=>setStatus('idle'),2000);};
+  recognition.start();
+}
+function stopRecording(){
+  isRecording=false;
+  document.getElementById('micBtn').classList.remove('recording');
+  document.getElementById('bigMic').classList.remove('recording');
+  document.getElementById('voiceWave').style.opacity='0.2';
+  try{recognition?.stop();}catch(e){}
+  if(!isSpeaking)setStatus('idle');
+}
+async function processVoice(text){
+  const d=document.getElementById('voiceDisplay');
+  d.textContent='→ '+text; setStatus('thinking');
+  const res=await getMoekaResponse(text);
+  d.textContent=res; setStatus('speaking');
+  await speakText(res); setStatus('idle');
+}
+
+// ─── ページ切替 ───
+window.showPage=(page)=>{
+  ['chat','card','voice'].forEach(p=>{
+    document.getElementById(p+'Page').style.display=p===page?'block':'none';
+  });
+  document.getElementById('inputArea').style.display=page==='chat'?'block':'none';
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  const map={chat:'navChat',card:'navCard',voice:'navVoice'};
+  document.getElementById(map[page])?.classList.add('active');
+};
+window.switchMode=(m)=>{
+  document.getElementById('chatModeBtn').classList.toggle('active',m==='chat');
+  document.getElementById('voiceModeBtn').classList.toggle('active',m==='voice');
+  showPage(m==='voice'?'voice':'chat');
+};
+
+// ─── 設定 ───
+window.toggleSettings=()=>document.getElementById('settingsPanel').classList.toggle('show');
+window.saveSettings=()=>{
+  settings.hfToken=document.getElementById('hfToken').value.trim();
+  settings.cloudProvider=document.getElementById('cloudProvider').value;
+  settings.cloudApiKey=document.getElementById('cloudApiKey').value.trim();
+  localStorage.setItem('moeka_settings',JSON.stringify(settings));
+  updateAIBadges(); showToast('保存したよ！'); toggleSettings();
+};
+function loadSettings(){
+  const s=localStorage.getItem('moeka_settings');
+  if(s)settings=JSON.parse(s);
+  document.getElementById('hfToken').value=settings.hfToken||'';
+  document.getElementById('cloudProvider').value=settings.cloudProvider||'none';
+  document.getElementById('cloudApiKey').value=settings.cloudApiKey||'';
+  updateAIBadges();
+}
+function updateAIBadges(){
+  const bq=document.getElementById('badgeQwen');
+  const bh=document.getElementById('badgeHF');
+  const bc=document.getElementById('badgeCloud');
+  bq.className='ai-badge '+(qwenPipeline?'active':'inactive');
+  bq.textContent=qwenPipeline?'✅ Qwen オフライン':'🤖 Qwen（未ロード）';
+  bh.className='ai-badge '+(settings.hfToken?'active':'inactive');
+  bh.textContent=settings.hfToken?'✅ HF API':'🌐 HF API（未設定）';
+  bc.className='ai-badge '+(settings.cloudApiKey&&settings.cloudProvider!=='none'?'active':'inactive');
+  bc.textContent=settings.cloudApiKey&&settings.cloudProvider!=='none'?`✅ ${settings.cloudProvider}`:'☁️ Cloud（未設定）';
+}
+
+// ─── ユーティリティ ───
+function updateOnline(){
+  isOnline=navigator.onLine;
+  const b=document.getElementById('wifiBadge');
+  if(qwenPipeline){b.textContent='● Qwen起動中';b.className='wifi-badge qwen';}
+  else{b.textContent=isOnline?'● オンライン':'● オフライン';b.className='wifi-badge '+(isOnline?'online':'offline');}
+}
+window.handleKeydown=(e)=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}};
+window.autoResize=(el)=>{el.style.height='auto';el.style.height=Math.min(el.scrollHeight,100)+'px';};
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+</script>
+</body>
+</html>
